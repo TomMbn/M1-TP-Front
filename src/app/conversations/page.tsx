@@ -25,8 +25,11 @@ export default function ConversationsPage() {
     ]);
   }, []);
 
+  // Sauvegarde à chaque changement, mais seulement si conversations a changé (évite l'écrasement lors du retour)
   useEffect(() => {
-    localStorage.setItem("chat_conversations", JSON.stringify(conversations));
+    if (conversations.length > 0) {
+      localStorage.setItem("chat_conversations", JSON.stringify(conversations));
+    }
   }, [conversations]);
 
   const addConversation = () => {

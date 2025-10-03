@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, FormEvent, useEffect, useRef } from "react";
+import Toast from "../components/Toast";
 
 type UserProfile = {
   pseudo: string;
@@ -14,6 +15,7 @@ export default function CreateProfilePage() {
   const [photo, setPhoto] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -69,6 +71,7 @@ export default function CreateProfilePage() {
         context.drawImage(videoRef.current, 0, 0, 240, 240);
         const dataUrl = canvasRef.current.toDataURL("image/png");
         setPhoto(dataUrl);
+        setShowToast(true);
         closeCamera();
       }
     }
@@ -160,6 +163,7 @@ export default function CreateProfilePage() {
           Valider
         </button>
       </form>
+      <Toast message="Photo prise avec succès !" show={showToast} onClose={() => setShowToast(false)} />
     </main>
   );
 }
