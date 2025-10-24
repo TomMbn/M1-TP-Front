@@ -11,12 +11,46 @@ type UserProfile = {
 export default function HomePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [rooms, setRooms] = useState<{ name: string; clients: Record<string, any> }[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("chat_user");
     if (stored) {
       setProfile(JSON.parse(stored));
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      setRoomsLoading(true);
+      try {
+        const res = await fetch("http://api.tools.gavago.fr/socketio/api/rooms", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) throw new Error("Failed to fetch rooms");
+        const json = await res.json();
+        if (json.success && json.data) {
+          const data = json.data;
+          const list = Object.keys(data).map((roomName) => ({
+            name: roomName,
+            clients: data[roomName]?.clients || {},
+          }));
+          setRooms(list);
+        } else {
+          console.warn("Rooms API did not return expected data", json);
+        }
+      } catch (err) {
+        console.error("Error fetching rooms:", err);
+      } finally {
+        setRoomsLoading(false);
+      }
+    };
+
+    fetchRooms();
   }, []);
 
   return (
@@ -57,6 +91,31 @@ export default function HomePage() {
             >
               Galerie
             </button>
+          </div>
+
+          {/* Rooms list fetched from API */}
+          <div className="mt-6 w-full">
+            <h2 className="text-lg font-semibold mb-2">Salles disponibles</h2>
+            {roomsLoading ? (
+              <p className="text-sm text-gray-500">Chargement des salles...</p>
+            ) : rooms.length === 0 ? (
+              <p className="text-sm text-gray-500">Aucune salle trouvée.</p>
+            ) : (
+              <div className="flex flex-col gap-2 w-full">
+                {rooms.map((r) => (
+                  <button
+                    key={r.name}
+                    onClick={() => router.push(`/room/${encodeURIComponent(r.name)}`)}
+                    className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{r.name}</span>
+                      <span className="text-sm text-gray-600">{Object.keys(r.clients).length} membres</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : (
