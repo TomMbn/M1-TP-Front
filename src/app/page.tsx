@@ -56,6 +56,39 @@ export default function HomePage() {
     }
   };
 
+  // helper to decode possibly multi-encoded room names and trim for display
+  const formatRoomName = (raw: string, max = 40) => {
+    let full = raw;
+    try {
+      // Iteratively decode until stable or max iterations (handles double/triple encoding)
+      let prev = null;
+      const maxIterations = 6;
+      let i = 0;
+      while (i < maxIterations && full !== prev) {
+        prev = full;
+        try {
+          full = decodeURIComponent(full);
+        } catch (e) {
+          // stop decoding if invalid
+          break;
+        }
+        i++;
+      }
+
+      // Replace plus with space (some encodings use + for spaces)
+      full = full.replace(/\+/g, " ");
+
+      // Trim surrounding quotes or whitespace
+      full = full.trim().replace(/^\"|\"$/g, "");
+    } catch (e) {
+      // leave raw if decode fails
+      full = raw;
+    }
+    if (full.length <= max) return { short: full, full };
+    const short = full.slice(0, max - 1).trim() + "…";
+    return { short, full };
+  };
+
   useEffect(() => {
     const fetchRooms = async () => {
       setRoomsLoading(true);
@@ -144,7 +177,10 @@ export default function HomePage() {
                     className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
                   >
                     <div className="flex justify-between items-center">
-                      <span className="font-medium">{r.name}</span>
+                      {(() => {
+                        const { short, full } = formatRoomName(r.name, 42);
+                        return <span className="font-medium" title={full}>{short}</span>;
+                      })()}
                       <span className="text-sm text-gray-600">{Object.keys(r.clients).length} membres</span>
                     </div>
                   </button>
