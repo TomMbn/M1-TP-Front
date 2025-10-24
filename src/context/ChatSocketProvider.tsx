@@ -3,6 +3,15 @@
 import React, { createContext, useCallback, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
+export type ChatMessage = {
+  content: any;
+  pseudo?: string;
+  dateEmis?: string;
+  categorie?: string;
+  roomName?: string;
+  [k: string]: any;
+};
+
 type ChatContextType = {
   socket: Socket | null;
   connected: boolean;
@@ -10,6 +19,9 @@ type ChatContextType = {
   joinRoom: (pseudo: string, roomName: string) => Promise<any>;
   sendMessage: (content: string, roomName: string) => void;
   disconnect: () => void;
+  // new
+  getBufferedMessages: (roomName: string) => ChatMessage[];
+  subscribeMessages: (roomName: string, cb: (msg: ChatMessage) => void) => () => void;
 };
 
 export const ChatSocketContext = createContext<ChatContextType>({
@@ -19,12 +31,27 @@ export const ChatSocketContext = createContext<ChatContextType>({
   joinRoom: async () => {},
   sendMessage: () => {},
   disconnect: () => {},
+  getBufferedMessages: () => [],
+  subscribeMessages: () => () => {},
 });
 
 export function ChatSocketProvider({ children }: { children: React.ReactNode }) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
+
+  // buffer messages per room and subscribers
+  const messagesRef = useRef<Record<string, ChatMessage[]>>({});
+  const subscribersRef = useRef<Record<string, Set<(m: ChatMessage) => void>>>({});
+
+  const pushMessageToBuffer = (roomName: string, msg: ChatMessage) => {
+    if (!messagesRef.current[roomName]) messagesRef.current[roomName] = [];
+    messagesRef.current[roomName].push(msg);
+    const subs = subscribersRef.current[roomName];
+    if (subs) {
+      subs.forEach((cb) => cb(msg));
+    }
+  };
 
   const ensureSocket = useCallback((): Socket => {
     if (!socketRef.current) {
@@ -46,6 +73,16 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       socketRef.current.on("connect", () => setConnected(true));
       socketRef.current.on("disconnect", () => setConnected(false));
       socketRef.current.on("error", (e: any) => console.error("socket error", e));
+
+      // global incoming chat messages -> buffer and notify subscribers
+      socketRef.current.on("chat-msg", (msg: ChatMessage) => {
+        try {
+          const room = msg?.roomName ?? "general";
+          pushMessageToBuffer(room, msg);
+        } catch (e) {
+          console.error("error handling chat-msg in provider", e, msg);
+        }
+      });
     }
     return socketRef.current;
   }, []);
@@ -101,6 +138,22 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     socket.emit("chat-msg", { content, roomName });
   }, [ensureSocket]);
 
+  const getBufferedMessages = useCallback((roomName: string) => {
+    const buf = messagesRef.current[roomName] ? [...messagesRef.current[roomName]] : [];
+    // clear after reading to avoid delivering the same messages multiple times
+    messagesRef.current[roomName] = [];
+    return buf;
+  }, []);
+
+  const subscribeMessages = useCallback((roomName: string, cb: (m: ChatMessage) => void) => {
+    if (!subscribersRef.current[roomName]) subscribersRef.current[roomName] = new Set();
+    subscribersRef.current[roomName].add(cb);
+    // return unsubscribe
+    return () => {
+      subscribersRef.current[roomName]?.delete(cb);
+    };
+  }, []);
+
   const disconnect = useCallback(() => {
     try {
       socketRef.current?.disconnect();
@@ -113,7 +166,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <ChatSocketContext.Provider value={{ socket: socketRef.current, connected, currentRoom, joinRoom, sendMessage, disconnect }}>
+    <ChatSocketContext.Provider value={{ socket: socketRef.current, connected, currentRoom, joinRoom, sendMessage, disconnect, getBufferedMessages, subscribeMessages }}>
       {children}
     </ChatSocketContext.Provider>
   );

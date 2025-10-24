@@ -1,15 +1,19 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import Toast from "../../components/Toast";
+import { ChatSocketContext } from "../../../context/ChatSocketProvider";
 
 interface Message {
-  id: number;
+  id: string;
   text: string;
   attachment?: string;
   sender: "me" | "other";
+  pseudo?: string;
+  categorie?: string;
   timestamp: string;
+  optimistic?: boolean;
 }
 
 const conversationNames: Record<string, string> = {
@@ -20,6 +24,13 @@ const conversationNames: Record<string, string> = {
 
 export default function RoomPage() {
   const { id } = useParams();
+  const genId = () => {
+    try {
+      // @ts-ignore
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    } catch (e) {}
+    return `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+  };
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [file, setFile] = useState<string | undefined>(undefined);
@@ -30,6 +41,111 @@ export default function RoomPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
+  const chat = useContext(ChatSocketContext);
+
+  // read local profile to determine own pseudo
+  const [localPseudo, setLocalPseudo] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("chat_user");
+      if (stored) setLocalPseudo(JSON.parse(stored).pseudo ?? null);
+    } catch (e) {
+      setLocalPseudo(null);
+    }
+  }, []);
+
+  // subscribe to incoming chat messages
+  useEffect(() => {
+    const roomName = id as string;
+    if (!roomName) return;
+
+    let unsubFn: any = null;
+
+    (async () => {
+      try {
+        // try to auto-join the room so the server will emit past messages
+        const stored = localStorage.getItem("chat_user");
+        const pseudo = stored ? JSON.parse(stored).pseudo : undefined;
+        if (pseudo) {
+          try {
+            // only join if not already in room
+            if ((chat as any)?.currentRoom !== roomName) {
+              await (chat as any)?.joinRoom?.(pseudo, roomName);
+            }
+          } catch (e) {
+            console.warn("Auto-join failed", e);
+          }
+        }
+
+        // now load buffered messages that arrived during join
+        try {
+          const buffered = (chat as any)?.getBufferedMessages?.(roomName) ?? [];
+          if (Array.isArray(buffered) && buffered.length) {
+            const prepared = buffered.map((msg: any) => {
+              const content = msg.content ?? "";
+              const pseudo = msg.pseudo ?? "";
+              const date = msg.dateEmis ? new Date(msg.dateEmis) : new Date();
+              const text = typeof content === "string" ? content : JSON.stringify(content);
+              return {
+                id: genId(),
+                text,
+                attachment: msg.categorie === "NEW_IMAGE" ? content : undefined,
+                sender: pseudo === localPseudo ? "me" : "other",
+                pseudo,
+                categorie: msg.categorie,
+                timestamp: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              } as Message;
+            });
+            setMessages((prev) => [...prev, ...prepared]);
+          }
+        } catch (e) {
+          console.error("failed to load buffered messages", e);
+        }
+
+        const onChatMsg = (msg: any) => {
+          try {
+            if ((msg as any)?.roomName && (msg as any).roomName !== roomName) return; // ignore other rooms
+            const content = msg.content ?? "";
+            const pseudo = msg.pseudo ?? "";
+            const date = msg.dateEmis ? new Date(msg.dateEmis) : new Date();
+            const text = typeof content === "string" ? content : JSON.stringify(content);
+
+            setMessages((prev) => {
+              // try to find an optimistic message matching this one (same text and sender me)
+              const optimisticIndex = prev.findIndex((m) => m.optimistic && m.sender === "me" && m.text === text);
+              const serverMsg: Message = {
+                id: genId(),
+                text,
+                attachment: msg.categorie === "NEW_IMAGE" ? content : undefined,
+                sender: pseudo === localPseudo ? "me" : "other",
+                pseudo,
+                categorie: msg.categorie,
+                timestamp: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              };
+              if (optimisticIndex !== -1) {
+                // replace optimistic with server message
+                const copy = [...prev];
+                copy[optimisticIndex] = serverMsg;
+                return copy;
+              }
+              return [...prev, serverMsg];
+            });
+          } catch (e) {
+            console.error("failed to handle chat-msg", e, msg);
+          }
+        };
+
+        unsubFn = (chat as any)?.subscribeMessages?.(roomName, onChatMsg);
+      } catch (e) {
+        console.error("message subscription setup failed", e);
+      }
+    })();
+
+    return () => {
+      if (typeof unsubFn === "function") unsubFn();
+    };
+  }, [chat, id, localPseudo]);
+
   useEffect(() => {
     if (showCamera && stream && videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -38,16 +154,30 @@ export default function RoomPage() {
 
   const handleSend = () => {
     if (!input && !file) return;
-    setMessages([
-      ...messages,
+
+    const content = input || "";
+    // optimistically add
+    const tempId = genId();
+    setMessages((prev) => [
+      ...prev,
       {
-        id: Date.now(),
-        text: input,
+        id: tempId,
+        text: content,
         attachment: file,
         sender: "me",
+        pseudo: localPseudo ?? "Moi",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        optimistic: true,
       },
     ]);
+
+    // emit via provider
+    try {
+      (chat as any)?.sendMessage(content, id as string);
+    } catch (e) {
+      console.error("sendMessage error", e);
+    }
+
     setInput("");
     setFile(undefined);
     setPreview(undefined);
@@ -120,15 +250,20 @@ export default function RoomPage() {
           <div className="text-gray-400 text-center">Aucun message pour l'instant.</div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-xs p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
-                <div>{msg.text}</div>
-                {msg.attachment && (
-                  <img src={msg.attachment} alt="attachment" className="mt-2 max-h-32 rounded-lg" />
-                )}
-                <div className="text-xs text-right mt-1 opacity-60">{msg.timestamp}</div>
+            msg.categorie === "INFO" ? (
+              <div key={msg.id} className="w-full text-center text-sm text-gray-600">{msg.text}</div>
+            ) : (
+              <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-xs p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
+                  <div className="text-xs font-semibold mb-1 opacity-80">{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
+                  <div>{msg.text}</div>
+                  {msg.attachment && (
+                    <img src={msg.attachment} alt="attachment" className="mt-2 max-h-32 rounded-lg" />
+                  )}
+                  <div className="text-xs text-right mt-1 opacity-60">{msg.timestamp}</div>
+                </div>
               </div>
-            </div>
+            )
           ))
         )}
       </div>

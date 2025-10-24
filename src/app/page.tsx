@@ -39,6 +39,23 @@ export default function HomePage() {
     }
   };
 
+  const createRoom = async () => {
+    if (!profile) {
+      router.push("/create-profile");
+      return;
+    }
+    const name = window.prompt("Nom de la nouvelle salle :", "");
+    if (!name || !name.trim()) return;
+    const roomName = name.trim();
+    try {
+      await chat.joinRoom(profile.pseudo, roomName);
+      router.push(`/room/${encodeURIComponent(roomName)}`);
+    } catch (e) {
+      console.error("Failed to create/join room", e);
+      alert("Impossible de créer la salle.");
+    }
+  };
+
   useEffect(() => {
     const fetchRooms = async () => {
       setRoomsLoading(true);
@@ -98,10 +115,10 @@ export default function HomePage() {
               Profil
             </button>
             <button
-              onClick={() => router.push("/conversations")}
+              onClick={createRoom}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-700 hover:to-indigo-600 rounded-lg text-white font-semibold shadow transition"
             >
-              Conversations
+              Créer une salle
             </button>
             <button
               onClick={() => router.push("/gallery")}
