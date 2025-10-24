@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
+import { ChatSocketContext } from "../context/ChatSocketProvider";
 
 type UserProfile = {
   pseudo: string;
@@ -14,12 +15,29 @@ export default function HomePage() {
   const [rooms, setRooms] = useState<{ name: string; clients: Record<string, any> }[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
 
+  const chat = useContext(ChatSocketContext);
+
   useEffect(() => {
     const stored = localStorage.getItem("chat_user");
     if (stored) {
       setProfile(JSON.parse(stored));
     }
   }, []);
+
+  const joinRoom = async (roomName: string) => {
+    if (!profile) {
+      router.push("/create-profile");
+      return;
+    }
+
+    try {
+      await chat.joinRoom(profile.pseudo, roomName);
+      router.push(`/room/${encodeURIComponent(roomName)}`);
+    } catch (e) {
+      console.error("Failed to join room", e);
+      alert("Impossible de rejoindre la salle.");
+    }
+  };
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -105,7 +123,7 @@ export default function HomePage() {
                 {rooms.map((r) => (
                   <button
                     key={r.name}
-                    onClick={() => router.push(`/room/${encodeURIComponent(r.name)}`)}
+                    onClick={() => joinRoom(r.name)}
                     className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
                   >
                     <div className="flex justify-between items-center">
