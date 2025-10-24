@@ -25,7 +25,7 @@ export default function HomePage() {
     const fetchRooms = async () => {
       setRoomsLoading(true);
       try {
-        const res = await fetch("http://api.tools.gavago.fr/socketio/api/rooms", {
+        const res = await fetch("https://api.tools.gavago.fr/socketio/api/rooms", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
