@@ -28,8 +28,8 @@ export default function RoomPage() {
     try {
       // @ts-ignore
       if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
-    } catch (e) {}
-    return `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+    } catch (e) { }
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   };
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -77,25 +77,44 @@ export default function RoomPage() {
           }
         }
 
+        // Helper to parse content
+        const parseMessage = (msg: any): Message => {
+          const content = msg.content ?? "";
+          const pseudo = msg.pseudo ?? "";
+          const date = msg.dateEmis ? new Date(msg.dateEmis) : new Date();
+
+          let text = typeof content === "string" ? content : JSON.stringify(content);
+          let categorie = msg.categorie;
+
+          // Try to detect location JSON in content
+          try {
+            if (typeof content === "string" && content.startsWith("{")) {
+              const parsed = JSON.parse(content);
+              if (parsed.type === "LOCATION" && parsed.lat && parsed.lng) {
+                categorie = "LOCATION";
+                text = `${parsed.lat},${parsed.lng}`;
+              }
+            }
+          } catch (e) {
+            // ignore JSON parse error
+          }
+
+          return {
+            id: genId(),
+            text,
+            attachment: categorie === "NEW_IMAGE" ? content : undefined,
+            sender: pseudo === localPseudo ? "me" : "other",
+            pseudo,
+            categorie,
+            timestamp: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          };
+        };
+
         // now load buffered messages that arrived during join
         try {
           const buffered = (chat as any)?.getBufferedMessages?.(roomName) ?? [];
           if (Array.isArray(buffered) && buffered.length) {
-            const prepared = buffered.map((msg: any) => {
-              const content = msg.content ?? "";
-              const pseudo = msg.pseudo ?? "";
-              const date = msg.dateEmis ? new Date(msg.dateEmis) : new Date();
-              const text = typeof content === "string" ? content : JSON.stringify(content);
-              return {
-                id: genId(),
-                text,
-                attachment: msg.categorie === "NEW_IMAGE" ? content : undefined,
-                sender: pseudo === localPseudo ? "me" : "other",
-                pseudo,
-                categorie: msg.categorie,
-                timestamp: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              } as Message;
-            });
+            const prepared = buffered.map(parseMessage);
             setMessages((prev) => [...prev, ...prepared]);
           }
         } catch (e) {
@@ -105,23 +124,13 @@ export default function RoomPage() {
         const onChatMsg = (msg: any) => {
           try {
             if ((msg as any)?.roomName && (msg as any).roomName !== roomName) return; // ignore other rooms
-            const content = msg.content ?? "";
-            const pseudo = msg.pseudo ?? "";
-            const date = msg.dateEmis ? new Date(msg.dateEmis) : new Date();
-            const text = typeof content === "string" ? content : JSON.stringify(content);
+
+            const serverMsg = parseMessage(msg);
 
             setMessages((prev) => {
               // try to find an optimistic message matching this one (same text and sender me)
-              const optimisticIndex = prev.findIndex((m) => m.optimistic && m.sender === "me" && m.text === text);
-              const serverMsg: Message = {
-                id: genId(),
-                text,
-                attachment: msg.categorie === "NEW_IMAGE" ? content : undefined,
-                sender: pseudo === localPseudo ? "me" : "other",
-                pseudo,
-                categorie: msg.categorie,
-                timestamp: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              };
+              const optimisticIndex = prev.findIndex((m) => m.optimistic && m.sender === "me" && m.text === serverMsg.text);
+
               if (optimisticIndex !== -1) {
                 // replace optimistic with server message
                 const copy = [...prev];
@@ -240,6 +249,42 @@ export default function RoomPage() {
     }
   };
 
+  const handleSendLocation = () => {
+    if (!navigator.geolocation) {
+      alert("La géolocalisation n'est pas supportée par votre navigateur.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationData = { type: "LOCATION", lat: latitude, lng: longitude };
+        const contentToSend = JSON.stringify(locationData);
+        // On ne définit plus textForUi car c'est géré par le parser
+
+        // Optimistic UI update
+        const tempId = genId();
+        // Manually construct what parseMessage would return
+        const serverMsg: Message = {
+          id: tempId,
+          text: `${latitude},${longitude}`,
+          sender: "me",
+          pseudo: localPseudo ?? "Moi",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          optimistic: true,
+          categorie: "LOCATION",
+        };
+        setMessages((prev) => [...prev, serverMsg]);
+
+        // Send to server
+        (chat as any)?.sendMessage(contentToSend, id as string, { categorie: 'LOCATION' });
+      },
+      () => {
+        alert("Impossible de récupérer votre position.");
+      }
+    );
+  };
+
   return (
     <main className="flex flex-col h-screen bg-gray-100">
       <header className="bg-indigo-600 text-white p-4 text-xl font-bold">
@@ -252,6 +297,21 @@ export default function RoomPage() {
           messages.map((msg) => (
             msg.categorie === "INFO" ? (
               <div key={msg.id} className="w-full text-center text-sm text-gray-600">{msg.text}</div>
+            ) : msg.categorie === "LOCATION" ? (
+              <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-xs p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
+                  <div className="text-xs font-semibold mb-1 opacity-80">{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
+                  <a
+                    href={`https://www.google.com/maps?q=${msg.text}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline flex items-center gap-1 hover:text-blue-200 transition-colors"
+                  >
+                    📍 Position partagée
+                  </a>
+                  <div className="text-xs text-right mt-1 opacity-60">{msg.timestamp}</div>
+                </div>
+              </div>
             ) : (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-xs p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
@@ -284,6 +344,14 @@ export default function RoomPage() {
           className="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 ml-1"
         >
           📷
+        </button>
+        <button
+          type="button"
+          onClick={handleSendLocation}
+          className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 ml-1"
+          title="Partager ma position"
+        >
+          📍
         </button>
         {showCamera && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">

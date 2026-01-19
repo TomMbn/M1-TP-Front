@@ -14,8 +14,28 @@ export default function HomePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [rooms, setRooms] = useState<{ name: string; clients: Record<string, any> }[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
+  const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
 
   const chat = useContext(ChatSocketContext);
+
+  useEffect(() => {
+    // @ts-ignore
+    if (typeof navigator !== "undefined" && navigator.getBattery) {
+      // @ts-ignore
+      navigator.getBattery().then((battery) => {
+        setBatteryLevel(Math.round(battery.level * 100));
+
+        const updateBattery = () => {
+          setBatteryLevel(Math.round(battery.level * 100));
+        };
+
+        battery.addEventListener("levelchange", updateBattery);
+        return () => {
+          battery.removeEventListener("levelchange", updateBattery);
+        };
+      }).catch((e: any) => console.warn("Battery init error", e));
+    }
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem("chat_user");
@@ -124,6 +144,12 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-6">
       <h1 className="text-4xl font-bold mb-6 text-center">Bienvenue sur Chat PWA 👋</h1>
+
+      {batteryLevel !== null && (
+        <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/30 shadow-sm" title="Niveau de batterie">
+          🔋 {batteryLevel}%
+        </div>
+      )}
 
       {profile ? (
         <div className="flex flex-col items-center bg-white text-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-fade-in">

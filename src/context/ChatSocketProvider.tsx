@@ -17,7 +17,7 @@ type ChatContextType = {
   connected: boolean;
   currentRoom: string | null;
   joinRoom: (pseudo: string, roomName: string) => Promise<any>;
-  sendMessage: (content: string, roomName: string) => void;
+  sendMessage: (content: string, roomName: string, options?: { categorie?: string }) => void;
   disconnect: () => void;
   // new
   getBufferedMessages: (roomName: string) => ChatMessage[];
@@ -28,11 +28,11 @@ export const ChatSocketContext = createContext<ChatContextType>({
   socket: null,
   connected: false,
   currentRoom: null,
-  joinRoom: async () => {},
-  sendMessage: () => {},
-  disconnect: () => {},
+  joinRoom: async () => { },
+  sendMessage: () => { },
+  disconnect: () => { },
   getBufferedMessages: () => [],
-  subscribeMessages: () => () => {},
+  subscribeMessages: () => () => { },
 });
 
 export function ChatSocketProvider({ children }: { children: React.ReactNode }) {
@@ -68,7 +68,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       try {
         // @ts-ignore
         window.__SOCKET__ = socketRef.current;
-      } catch (e) {}
+      } catch (e) { }
 
       socketRef.current.on("connect", () => setConnected(true));
       socketRef.current.on("disconnect", () => setConnected(false));
@@ -115,7 +115,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
         try {
           payload.pseudo = pseudo;
           payload.myPseudo = pseudo;
-        } catch (e) {}
+        } catch (e) { }
         console.log("emitting chat-join-room", payload);
         socket.emit("chat-join-room", payload);
       };
@@ -133,9 +133,13 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     });
   }, [ensureSocket]);
 
-  const sendMessage = useCallback((content: string, roomName: string) => {
+  const sendMessage = useCallback((content: string, roomName: string, options?: { categorie?: string }) => {
     const socket = ensureSocket();
-    socket.emit("chat-msg", { content, roomName });
+    const payload: any = { content, roomName };
+    if (options?.categorie) {
+      payload.categorie = options.categorie;
+    }
+    socket.emit("chat-msg", payload);
   }, [ensureSocket]);
 
   const getBufferedMessages = useCallback((roomName: string) => {
