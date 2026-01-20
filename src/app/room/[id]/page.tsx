@@ -125,14 +125,12 @@ export default function RoomPage() {
 
           let text = typeof content === "string" ? content : JSON.stringify(content);
           let categorie = msg.categorie;
+          let attachmentUrl = categorie === "NEW_IMAGE" ? content : undefined;
 
           try {
             if (typeof content === "string" && content.startsWith("{")) {
               const parsed = JSON.parse(content);
-              if (parsed.type === "LOCATION" && parsed.lat && parsed.lng) {
-                categorie = "LOCATION";
-                text = `${parsed.lat},${parsed.lng}`;
-              } else if (parsed.type === "geo" && parsed.lat && parsed.lng) {
+              if ((parsed.type === "LOCATION" || parsed.type === "geo") && parsed.lat && parsed.lng) {
                 categorie = "LOCATION";
                 text = `${parsed.lat},${parsed.lng}`;
               }
@@ -141,8 +139,14 @@ export default function RoomPage() {
             // ignore JSON parse error
           }
 
+          // Detect raw base64 image
+          if (typeof content === "string" && content.startsWith("data:image")) {
+            categorie = "NEW_IMAGE";
+            text = "";
+            attachmentUrl = content;
+          }
+
           // Detect [IMAGE] pattern
-          let attachmentUrl = categorie === "NEW_IMAGE" ? content : undefined;
           if (typeof content === "string" && content.includes("[IMAGE]")) {
             const match = content.match(/\[IMAGE\]\s+(https?:\/\/\S+)/);
             if (match && match[1]) {
@@ -152,8 +156,13 @@ export default function RoomPage() {
             }
           }
 
+          // Generate stable ID for deduplication
+          // We prioritize msg.id, otherwise we build a hash from immutable props
+          const stableId = (msg as any).id ??
+            `${date.getTime()}-${pseudo}-${typeof content === 'string' ? content.substring(0, 32) : 'obj'}`;
+
           return {
-            id: genId(),
+            id: stableId, // Use stable ID instead of genId()
             text,
             attachment: attachmentUrl,
             sender: pseudo === localPseudo ? "me" : "other",
@@ -168,7 +177,11 @@ export default function RoomPage() {
           const buffered = (chat as any)?.getBufferedMessages?.(roomName) ?? [];
           if (Array.isArray(buffered) && buffered.length) {
             const prepared = buffered.map(parseMessage);
-            setMessages((prev) => [...prev, ...prepared]);
+            setMessages((prev) => {
+              // Deduplicate: filter out messages that already exist by ID
+              const newMsgs = prepared.filter(p => !prev.some(m => m.id === p.id));
+              return [...prev, ...newMsgs];
+            });
           }
         } catch (e) {
           console.error("failed to load buffered messages", e);
@@ -218,6 +231,19 @@ export default function RoomPage() {
                 copy[optimisticIndex] = serverMsg;
                 return copy;
               }
+
+              // Deduplicate real-time: if ID exists, update it (e.g. sender "other" -> "me") or ignore
+              const existingIndex = prev.findIndex(m => m.id === serverMsg.id);
+              if (existingIndex !== -1) {
+                // If existing was "other" and new is "me", update it
+                if (prev[existingIndex].sender === "other" && serverMsg.sender === "me") {
+                  const copy = [...prev];
+                  copy[existingIndex] = serverMsg;
+                  return copy;
+                }
+                return prev; // Ignore exact duplicate
+              }
+
               return [...prev, serverMsg];
             });
           } catch (e) {
@@ -463,8 +489,8 @@ export default function RoomPage() {
             ) : msg.categorie === "LOCATION" ? (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-md p-3 rounded-2xl shadow-sm ${msg.sender === "me"
-                    ? "bg-white/20 backdrop-blur-md text-white border border-white/20 rounded-br-none"
-                    : "bg-white/90 backdrop-blur-md text-gray-800 rounded-bl-none"
+                  ? "bg-white/20 backdrop-blur-md text-white border border-white/20 rounded-br-none"
+                  : "bg-white/90 backdrop-blur-md text-gray-800 rounded-bl-none"
                   }`}>
                   <div className={`text-xs font-bold mb-1 ${msg.sender === "me" ? "text-pink-200" : "text-indigo-600"}`}>{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
                   <a
@@ -481,8 +507,8 @@ export default function RoomPage() {
             ) : (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-md p-3 rounded-2xl shadow-sm ${msg.sender === "me"
-                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-br-none shadow-lg"
-                    : "bg-white/90 backdrop-blur-md text-gray-900 rounded-bl-none shadow-md"
+                  ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-br-none shadow-lg"
+                  : "bg-white/90 backdrop-blur-md text-gray-900 rounded-bl-none shadow-md"
                   }`}>
                   <div className={`text-xs font-bold mb-1 ${msg.sender === "me" ? "text-pink-200" : "text-indigo-600"}`}>{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
                   <div className="leading-relaxed">{msg.text}</div>

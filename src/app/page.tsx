@@ -113,7 +113,9 @@ export default function HomePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-700 to-pink-600 text-white p-6">
-      <h1 className="text-5xl font-extrabold mb-8 text-center drop-shadow-lg tracking-tight">Chat PWA</h1>
+      <div className="mb-8 drop-shadow-2xl hover:scale-105 transition transform duration-500">
+        <img src="/logo.svg" alt="Chat PWA Logo" className="w-32 h-32 object-cover rounded-[2.5rem] shadow-2xl" />
+      </div>
 
       {batteryLevel !== null && (
         <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/30 shadow-sm" title="Niveau de batterie">

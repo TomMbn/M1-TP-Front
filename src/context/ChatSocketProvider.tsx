@@ -77,6 +77,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       // global incoming chat messages -> buffer and notify subscribers
       socketRef.current.on("chat-msg", (msg: ChatMessage) => {
         try {
+          // Ensure timestamp for stable IDs
+          if (!msg.dateEmis) msg.dateEmis = new Date().toISOString();
+
           const room = msg?.roomName ?? "general";
           pushMessageToBuffer(room, msg);
         } catch (e) {
