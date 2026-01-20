@@ -1,12 +1,13 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useContext } from "react";
 import Toast from "../../components/Toast";
 import ChatMessageImage from "../../components/ChatMessageImage";
 import { ChatSocketContext } from "../../../context/ChatSocketProvider";
 import { API_BASE_URL } from "../../../utils/constants";
-import { genId } from "../../../utils/helpers";
+import { genId, formatRoomName } from "../../../utils/helpers";
+import { VALID_POP_SOUND } from "../../../utils/sounds";
 
 interface Message {
   id: string;
@@ -19,14 +20,12 @@ interface Message {
   optimistic?: boolean;
 }
 
-const conversationNames: Record<string, string> = {
-  "1": "Général",
-  "2": "Projet M1",
-  "3": "Amis",
-};
+
 
 export default function RoomPage() {
   const { id } = useParams();
+  const router = useRouter();
+  const [userCount, setUserCount] = useState<number>(0);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -72,6 +71,27 @@ export default function RoomPage() {
   };
 
 
+
+
+  // Fetch user count
+  useEffect(() => {
+    const fetchRoomInfo = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/socketio/api/rooms`);
+        const json = await res.json();
+        if (json.success && json.data && json.data[id as string]) {
+          const clients = json.data[id as string].clients || {};
+          setUserCount(Object.keys(clients).length);
+        }
+      } catch (e) {
+        console.error("Failed to fetch room info", e);
+      }
+    };
+    fetchRoomInfo();
+    // Optional: Poll every 10s to update count
+    const interval = setInterval(fetchRoomInfo, 10000);
+    return () => clearInterval(interval);
+  }, [id]);
 
   // subscribe to incoming chat messages
   useEffect(() => {
@@ -160,16 +180,30 @@ export default function RoomPage() {
             const serverMsg = parseMessage(msg);
 
             // Notify if it matches a remote sender
-            if (serverMsg.sender === "other" && typeof Notification !== "undefined" && Notification.permission === "granted") {
+            if (serverMsg.sender === "other") {
+              // Haptic feedback
+              if (typeof navigator !== "undefined" && navigator.vibrate) {
+                navigator.vibrate(200);
+              }
+              // Sound feedback
               try {
-                const notifTitle = `Nouveau message de ${serverMsg.pseudo || "Inconnu"}`;
-                const notifBody = serverMsg.attachment ? "📸 Photo envoyée" : serverMsg.text || "Message";
-                new Notification(notifTitle, {
-                  body: notifBody,
-                  icon: "/web-app-manifest-192x192.png"
-                });
+                const audio = new Audio(VALID_POP_SOUND);
+                audio.play().catch(e => console.warn("Audio play failed", e));
               } catch (e) {
-                // ignore notification errors
+                console.warn("Audio setup failed", e);
+              }
+
+              if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                try {
+                  const notifTitle = `Nouveau message de ${serverMsg.pseudo || "Inconnu"}`;
+                  const notifBody = serverMsg.attachment ? "📸 Photo envoyée" : serverMsg.text || "Message";
+                  new Notification(notifTitle, {
+                    body: notifBody,
+                    icon: "/web-app-manifest-192x192.png"
+                  });
+                } catch (e) {
+                  // ignore notification errors
+                }
               }
             }
 
@@ -382,8 +416,20 @@ export default function RoomPage() {
 
   return (
     <main className="flex flex-col h-screen bg-gray-100">
-      <header className="bg-indigo-600 text-white p-4 text-xl font-bold flex justify-between items-center">
-        <span>{conversationNames[id as string] || "Conversation"}</span>
+      <header className="bg-indigo-600 text-white p-4 text-xl font-bold flex justify-between items-center shadow-md z-10">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/")}
+            className="p-1 hover:bg-white/20 rounded-full transition"
+            title="Retour à l'accueil"
+          >
+            ←
+          </button>
+          <div className="flex flex-col">
+            <span>{formatRoomName(decodeURIComponent(id as string)).short}</span>
+            <span className="text-xs font-normal opacity-80">{userCount} connecté{userCount > 1 ? 's' : ''}</span>
+          </div>
+        </div>
         {notifPermission !== "granted" && (
           <button
             onClick={requestNotifPermission}
