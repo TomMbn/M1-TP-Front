@@ -112,8 +112,8 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-6">
-      <h1 className="text-4xl font-bold mb-6 text-center">Bienvenue sur Chat PWA 👋</h1>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-700 to-pink-600 text-white p-6">
+      <h1 className="text-5xl font-extrabold mb-8 text-center drop-shadow-lg tracking-tight">Chat PWA</h1>
 
       {batteryLevel !== null && (
         <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-sm font-medium border border-white/30 shadow-sm" title="Niveau de batterie">
@@ -122,36 +122,35 @@ export default function HomePage() {
       )}
 
       {profile ? (
-        <div className="flex flex-col items-center bg-white text-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-fade-in">
+        <div className="flex flex-col items-center bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 w-full max-w-md relative animate-fade-in">
           <div className="flex flex-col items-center w-full">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-1 rounded-full shadow-lg mb-4">
-              {profile.photo && (
+            {profile.photo && (
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-1 rounded-full shadow-lg mb-4">
                 <img
                   src={profile.photo}
-                  alt="Photo de profil"
-                  className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-xl"
+                  alt={profile.pseudo}
+                  className="w-24 h-24 rounded-full object-cover border-4 border-white"
                 />
-              )}
-            </div>
+              </div>
+            )}
             <p className="text-2xl font-bold mb-1 mt-2">{profile.pseudo}</p>
-            <p className="text-gray-500 mb-4">Bienvenue 👋</p>
           </div>
           <div className="flex flex-row gap-4 w-full justify-center mt-4">
             <button
               onClick={() => router.push("/create-profile")}
-              className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-semibold shadow transition"
+              className="flex-1 px-4 py-3 bg-white/20 hover:bg-white/30 border border-white/10 rounded-xl text-white font-semibold shadow-lg transition transform hover:scale-105"
             >
               Profil
             </button>
             <button
               onClick={createRoom}
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-700 hover:to-indigo-600 rounded-lg text-white font-semibold shadow transition"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 rounded-xl text-white font-semibold shadow-lg transition transform hover:scale-105"
             >
               Créer une salle
             </button>
             <button
               onClick={() => router.push("/gallery")}
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 rounded-lg text-white font-semibold shadow transition"
+              className="flex-1 px-4 py-3 bg-white/20 hover:bg-white/30 border border-white/10 rounded-xl text-white font-semibold shadow-lg transition transform hover:scale-105"
             >
               Galerie
             </button>
@@ -166,29 +165,29 @@ export default function HomePage() {
               placeholder="Rechercher une salle..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 mb-4 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+              className="w-full px-5 py-3 mb-4 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 text-white placeholder-white/60 transition"
             />
 
             {roomsLoading ? (
-              <p className="text-sm text-gray-500">Chargement des salles...</p>
+              <p className="text-sm text-white/60 text-center animate-pulse">Chargement des salles...</p>
             ) : rooms.length === 0 ? (
-              <p className="text-sm text-gray-500">Aucune salle trouvée.</p>
+              <p className="text-sm text-white/60 text-center">Aucune salle trouvée.</p>
             ) : (
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-3 w-full max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                 {rooms
                   .filter((r) => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map((r) => (
                     <button
                       key={r.name}
                       onClick={() => joinRoom(r.name)}
-                      className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                      className="w-full text-left px-5 py-3 bg-white/5 hover:bg-white/20 border border-white/10 rounded-xl transition group"
                     >
                       <div className="flex justify-between items-center">
                         {(() => {
                           const { short, full } = formatRoomName(r.name, 42);
-                          return <span className="font-medium" title={full}>{short}</span>;
+                          return <span className="font-medium text-white group-hover:text-pink-200 transition" title={full}>{short}</span>;
                         })()}
-                        <span className="text-sm text-gray-600">{Object.keys(r.clients).length} membres</span>
+                        <span className="text-xs bg-white/20 px-2 py-1 rounded-full text-white/90">{Object.keys(r.clients).length} 👤</span>
                       </div>
                     </button>
                   ))}
@@ -199,7 +198,7 @@ export default function HomePage() {
       ) : (
         <button
           onClick={() => router.push("/create-profile")}
-          className="px-6 py-3 bg-white text-indigo-700 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition"
+          className="px-8 py-4 bg-white text-indigo-700 font-bold rounded-full shadow-2xl hover:bg-gray-100 transition transform hover:scale-105"
         >
           Créer mon profil
         </button>

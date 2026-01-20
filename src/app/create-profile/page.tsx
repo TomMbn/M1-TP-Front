@@ -92,31 +92,42 @@ export default function CreateProfilePage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-700 to-pink-600 p-6">
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md flex flex-col gap-4"
+        className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 w-full max-w-md flex flex-col gap-6 animate-fade-in"
       >
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
-          Créer votre profil
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
+            title="Retour"
+          >
+            ←
+          </button>
+          <h2 className="text-3xl font-bold text-center text-white drop-shadow-md flex-1 pr-10">
+            Profil
+          </h2>
+        </div>
 
         <div>
-          <label htmlFor="pseudo" className="block text-gray-700 font-medium mb-1">
-            Pseudo <span className="text-red-500">*</span>
+          <label htmlFor="pseudo" className="block text-white/80 font-medium mb-1 ml-1">
+            Pseudo <span className="text-pink-400">*</span>
           </label>
           <input
             id="pseudo"
             type="text"
             value={pseudo}
             onChange={(e) => setPseudo(e.target.value)}
-            className="w-full border rounded-lg p-2 focus:ring-2 text-black focus:ring-indigo-500 outline-none"
+            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500 text-white placeholder-white/50 transition"
+            placeholder="Votre pseudo..."
             required
           />
         </div>
 
         <div>
-          <label htmlFor="photo" className="block text-gray-700 font-medium mb-1">
+          <label htmlFor="photo" className="block text-white/80 font-medium mb-1 ml-1">
             Photo (facultatif)
           </label>
           <div className="flex gap-2">
@@ -125,14 +136,14 @@ export default function CreateProfilePage() {
               type="file"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="w-full text-black border rounded-lg p-2"
+              className="w-full text-white/80 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30 cursor-pointer"
             />
             <button
               type="button"
               onClick={openCamera}
-              className="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600"
+              className="bg-white/20 text-white px-4 py-2 rounded-xl hover:bg-white/30 border border-white/10 transition flex items-center gap-2"
             >
-              Prendre une photo
+              📷 Photo
             </button>
           </div>
           {showCamera && (
@@ -158,7 +169,7 @@ export default function CreateProfilePage() {
 
         <button
           type="submit"
-          className="mt-4 w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition"
+          className="mt-4 w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-bold py-3 rounded-xl shadow-lg transition transform hover:scale-105"
         >
           Valider
         </button>
