@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { SOCKET_URL, SOCKET_PATH } from "../utils/constants";
 
 export type ChatMessage = {
   content: any;
@@ -59,14 +60,13 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       // Important: do NOT put the namespace in the URL (e.g. /socketio) —
       // that becomes the namespace and the server may reject it with "Invalid namespace".
       // Use the host + set path to the server socket.io endpoint.
-      socketRef.current = io("https://api.tools.gavago.fr", {
-        path: "/socket.io",
+      socketRef.current = io(SOCKET_URL, {
+        path: SOCKET_PATH,
         transports: ["websocket"],
       });
 
       // expose for temporary debug in the console
       try {
-        // @ts-ignore
         window.__SOCKET__ = socketRef.current;
       } catch (e) { }
 

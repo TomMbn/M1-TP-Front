@@ -5,6 +5,8 @@ import { useState, useRef, useEffect, useContext } from "react";
 import Toast from "../../components/Toast";
 import ChatMessageImage from "../../components/ChatMessageImage";
 import { ChatSocketContext } from "../../../context/ChatSocketProvider";
+import { API_BASE_URL } from "../../../utils/constants";
+import { genId } from "../../../utils/helpers";
 
 interface Message {
   id: string;
@@ -25,13 +27,7 @@ const conversationNames: Record<string, string> = {
 
 export default function RoomPage() {
   const { id } = useParams();
-  const genId = () => {
-    try {
-      // @ts-ignore
-      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
-    } catch (e) { }
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  };
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [file, setFile] = useState<string | undefined>(undefined);
@@ -225,7 +221,7 @@ export default function RoomPage() {
           return;
         }
 
-        const res = await fetch("https://api.tools.gavago.fr/socketio/tchat/api/images/", {
+        const res = await fetch(`${API_BASE_URL}/socketio/tchat/api/images/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -239,7 +235,7 @@ export default function RoomPage() {
         const data = await res.json();
         if (data.success) {
           // Construct the image URL message
-          const imageUrl = `https://api.tools.gavago.fr/socketio/tchat/api/images/${socketId}`;
+          const imageUrl = `${API_BASE_URL}/socketio/tchat/api/images/${socketId}`;
           content = `[IMAGE] ${imageUrl}`;
         } else {
           console.error("Upload failed", data);

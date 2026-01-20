@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useContext } from "react";
 import { ChatSocketContext } from "../context/ChatSocketProvider";
+import { API_BASE_URL } from "../utils/constants";
+import { formatRoomName } from "../utils/helpers";
 
 type UserProfile = {
   pseudo: string;
@@ -15,13 +17,12 @@ export default function HomePage() {
   const [rooms, setRooms] = useState<{ name: string; clients: Record<string, any> }[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const chat = useContext(ChatSocketContext);
 
   useEffect(() => {
-    // @ts-ignore
     if (typeof navigator !== "undefined" && navigator.getBattery) {
-      // @ts-ignore
       navigator.getBattery().then((battery) => {
         setBatteryLevel(Math.round(battery.level * 100));
 
@@ -76,44 +77,13 @@ export default function HomePage() {
     }
   };
 
-  // helper to decode possibly multi-encoded room names and trim for display
-  const formatRoomName = (raw: string, max = 40) => {
-    let full = raw;
-    try {
-      // Iteratively decode until stable or max iterations (handles double/triple encoding)
-      let prev = null;
-      const maxIterations = 6;
-      let i = 0;
-      while (i < maxIterations && full !== prev) {
-        prev = full;
-        try {
-          full = decodeURIComponent(full);
-        } catch (e) {
-          // stop decoding if invalid
-          break;
-        }
-        i++;
-      }
 
-      // Replace plus with space (some encodings use + for spaces)
-      full = full.replace(/\+/g, " ");
-
-      // Trim surrounding quotes or whitespace
-      full = full.trim().replace(/^\"|\"$/g, "");
-    } catch (e) {
-      // leave raw if decode fails
-      full = raw;
-    }
-    if (full.length <= max) return { short: full, full };
-    const short = full.slice(0, max - 1).trim() + "…";
-    return { short, full };
-  };
 
   useEffect(() => {
     const fetchRooms = async () => {
       setRoomsLoading(true);
       try {
-        const res = await fetch("https://api.tools.gavago.fr/socketio/api/rooms", {
+        const res = await fetch(`${API_BASE_URL}/socketio/api/rooms`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -190,27 +160,38 @@ export default function HomePage() {
           {/* Rooms list fetched from API */}
           <div className="mt-6 w-full">
             <h2 className="text-lg font-semibold mb-2">Salles disponibles</h2>
+
+            <input
+              type="text"
+              placeholder="Rechercher une salle..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 mb-4 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+            />
+
             {roomsLoading ? (
               <p className="text-sm text-gray-500">Chargement des salles...</p>
             ) : rooms.length === 0 ? (
               <p className="text-sm text-gray-500">Aucune salle trouvée.</p>
             ) : (
               <div className="flex flex-col gap-2 w-full">
-                {rooms.map((r) => (
-                  <button
-                    key={r.name}
-                    onClick={() => joinRoom(r.name)}
-                    className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
-                  >
-                    <div className="flex justify-between items-center">
-                      {(() => {
-                        const { short, full } = formatRoomName(r.name, 42);
-                        return <span className="font-medium" title={full}>{short}</span>;
-                      })()}
-                      <span className="text-sm text-gray-600">{Object.keys(r.clients).length} membres</span>
-                    </div>
-                  </button>
-                ))}
+                {rooms
+                  .filter((r) => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((r) => (
+                    <button
+                      key={r.name}
+                      onClick={() => joinRoom(r.name)}
+                      className="w-full text-left px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                    >
+                      <div className="flex justify-between items-center">
+                        {(() => {
+                          const { short, full } = formatRoomName(r.name, 42);
+                          return <span className="font-medium" title={full}>{short}</span>;
+                        })()}
+                        <span className="text-sm text-gray-600">{Object.keys(r.clients).length} membres</span>
+                      </div>
+                    </button>
+                  ))}
               </div>
             )}
           </div>
