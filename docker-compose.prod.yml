@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    # Remplacez GH_USERNAME et REPO_NAME par vos valeurs
+    # L'image sera automatiquement construite et poussée par la CI
+    image: ghcr.io/${GH_USERNAME}/${REPO_NAME}:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    # Ajoutez ici d'autres variables d'environnement si nécessaire
+    # env_file:
+    #   - .env.production

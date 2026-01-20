@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useState, useRef, useEffect, useContext } from "react";
 import Toast from "../../components/Toast";
+import ChatMessageImage from "../../components/ChatMessageImage";
 import { ChatSocketContext } from "../../../context/ChatSocketProvider";
 
 interface Message {
@@ -54,6 +55,13 @@ export default function RoomPage() {
     }
   }, []);
 
+  // Request notification permission
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // subscribe to incoming chat messages
   useEffect(() => {
     const roomName = id as string;
@@ -86,11 +94,13 @@ export default function RoomPage() {
           let text = typeof content === "string" ? content : JSON.stringify(content);
           let categorie = msg.categorie;
 
-          // Try to detect location JSON in content
           try {
             if (typeof content === "string" && content.startsWith("{")) {
               const parsed = JSON.parse(content);
               if (parsed.type === "LOCATION" && parsed.lat && parsed.lng) {
+                categorie = "LOCATION";
+                text = `${parsed.lat},${parsed.lng}`;
+              } else if (parsed.type === "geo" && parsed.lat && parsed.lng) {
                 categorie = "LOCATION";
                 text = `${parsed.lat},${parsed.lng}`;
               }
@@ -99,10 +109,21 @@ export default function RoomPage() {
             // ignore JSON parse error
           }
 
+          // Detect [IMAGE] pattern
+          let attachmentUrl = categorie === "NEW_IMAGE" ? content : undefined;
+          if (typeof content === "string" && content.includes("[IMAGE]")) {
+            const match = content.match(/\[IMAGE\]\s+(https?:\/\/\S+)/);
+            if (match && match[1]) {
+              categorie = "NEW_IMAGE";
+              attachmentUrl = match[1];
+              text = ""; // Hide the raw text
+            }
+          }
+
           return {
             id: genId(),
             text,
-            attachment: categorie === "NEW_IMAGE" ? content : undefined,
+            attachment: attachmentUrl,
             sender: pseudo === localPseudo ? "me" : "other",
             pseudo,
             categorie,
@@ -126,6 +147,17 @@ export default function RoomPage() {
             if ((msg as any)?.roomName && (msg as any).roomName !== roomName) return; // ignore other rooms
 
             const serverMsg = parseMessage(msg);
+
+            // Notify if it matches a remote sender
+            if (serverMsg.sender === "other" && typeof Notification !== "undefined" && Notification.permission === "granted") {
+              const notifTitle = `Nouveau message de ${serverMsg.pseudo || "Inconnu"}`;
+              const notifBody = serverMsg.attachment ? "📸 Photo envoyée" : serverMsg.text || "Message";
+
+              new Notification(notifTitle, {
+                body: notifBody,
+                icon: "/icon1.png" // Using one of the existing icons
+              });
+            }
 
             setMessages((prev) => {
               // try to find an optimistic message matching this one (same text and sender me)
@@ -161,28 +193,77 @@ export default function RoomPage() {
     }
   }, [showCamera, stream]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input && !file) return;
 
-    const content = input || "";
+    let content = input || "";
+
+    // If file exists, upload it first
+    if (file) {
+      try {
+        const socketId = (chat as any)?.socket?.id;
+        if (!socketId) {
+          alert("Impossible d'envoyer l'image : non connecté au serveur.");
+          return;
+        }
+
+        const res = await fetch("https://api.tools.gavago.fr/socketio/tchat/api/images/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: socketId,
+            image_data: file,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          // Construct the image URL message
+          const imageUrl = `https://api.tools.gavago.fr/socketio/tchat/api/images/${socketId}`;
+          content = `[IMAGE] ${imageUrl}`;
+        } else {
+          console.error("Upload failed", data);
+          alert("Erreur lors de l'envoi de l'image.");
+          return;
+        }
+      } catch (e) {
+        console.error("Error uploading image", e);
+        alert("Erreur réseau lors de l'envoi de l'image.");
+        return;
+      }
+    }
+
     // optimistically add
     const tempId = genId();
+    // For images, the parser clears the text, so we must do the same for the optimistic message to match
+    const textForMsg = file ? "" : content;
+
     setMessages((prev) => [
       ...prev,
       {
         id: tempId,
-        text: content,
-        attachment: file,
+        text: textForMsg,
+        attachment: file, // Keep local file for immediate preview if needed, or we could use the URL
         sender: "me",
         pseudo: localPseudo ?? "Moi",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         optimistic: true,
+        categorie: file ? "NEW_IMAGE" : undefined
       },
     ]);
 
     // emit via provider
     try {
-      (chat as any)?.sendMessage(content, id as string);
+      if (content) {
+        // If it's an image, we send the categorie NEW_IMAGE so other clients know? 
+        // Or relying on [IMAGE] parsing.
+        // The implementation plan mainly relied on [IMAGE] parsing for display, 
+        // but let's check if we need passing a specific category.
+        // Based on previous code, the parser handles [IMAGE] string detection.
+        (chat as any)?.sendMessage(content, id as string, file ? { categorie: 'NEW_IMAGE' } : undefined);
+      }
     } catch (e) {
       console.error("sendMessage error", e);
     }
@@ -299,7 +380,7 @@ export default function RoomPage() {
               <div key={msg.id} className="w-full text-center text-sm text-gray-600">{msg.text}</div>
             ) : msg.categorie === "LOCATION" ? (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-xs p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
+                <div className={`max-w-md p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
                   <div className="text-xs font-semibold mb-1 opacity-80">{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
                   <a
                     href={`https://www.google.com/maps?q=${msg.text}`}
@@ -314,11 +395,11 @@ export default function RoomPage() {
               </div>
             ) : (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-xs p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
+                <div className={`max-w-md p-3 rounded-2xl shadow ${msg.sender === "me" ? "bg-indigo-500 text-white" : "bg-white text-gray-800"}`}>
                   <div className="text-xs font-semibold mb-1 opacity-80">{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
                   <div>{msg.text}</div>
                   {msg.attachment && (
-                    <img src={msg.attachment} alt="attachment" className="mt-2 max-h-32 rounded-lg" />
+                    <ChatMessageImage src={msg.attachment} alt="attachment" className="mt-2 max-h-32 rounded-lg" />
                   )}
                   <div className="text-xs text-right mt-1 opacity-60">{msg.timestamp}</div>
                 </div>
