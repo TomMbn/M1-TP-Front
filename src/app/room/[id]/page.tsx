@@ -55,12 +55,27 @@ export default function RoomPage() {
     }
   }, []);
 
-  // Request notification permission
-  useEffect(() => {
-    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-      Notification.requestPermission();
+  // Track notification permission state
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default"
+  );
+
+  const requestNotifPermission = async () => {
+    if (typeof Notification === "undefined") return;
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifPermission(perm);
+      if (perm === "granted") {
+        new Notification("Notifications activées", {
+          body: "Vous recevrez désormais les nouveaux messages !",
+        });
+      }
+    } catch (e) {
+      console.error("Error asking notification permission", e);
     }
-  }, []);
+  };
+
+
 
   // subscribe to incoming chat messages
   useEffect(() => {
@@ -150,13 +165,16 @@ export default function RoomPage() {
 
             // Notify if it matches a remote sender
             if (serverMsg.sender === "other" && typeof Notification !== "undefined" && Notification.permission === "granted") {
-              const notifTitle = `Nouveau message de ${serverMsg.pseudo || "Inconnu"}`;
-              const notifBody = serverMsg.attachment ? "📸 Photo envoyée" : serverMsg.text || "Message";
-
-              new Notification(notifTitle, {
-                body: notifBody,
-                icon: "/icon1.png" // Using one of the existing icons
-              });
+              try {
+                const notifTitle = `Nouveau message de ${serverMsg.pseudo || "Inconnu"}`;
+                const notifBody = serverMsg.attachment ? "📸 Photo envoyée" : serverMsg.text || "Message";
+                new Notification(notifTitle, {
+                  body: notifBody,
+                  icon: "/web-app-manifest-192x192.png"
+                });
+              } catch (e) {
+                // ignore notification errors
+              }
             }
 
             setMessages((prev) => {
@@ -368,8 +386,17 @@ export default function RoomPage() {
 
   return (
     <main className="flex flex-col h-screen bg-gray-100">
-      <header className="bg-indigo-600 text-white p-4 text-xl font-bold">
-        {conversationNames[id as string] || "Conversation"}
+      <header className="bg-indigo-600 text-white p-4 text-xl font-bold flex justify-between items-center">
+        <span>{conversationNames[id as string] || "Conversation"}</span>
+        {notifPermission !== "granted" && (
+          <button
+            onClick={requestNotifPermission}
+            className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full flex items-center gap-2 transition-colors"
+            title="Activer les notifications"
+          >
+            🔔 Activer notifs
+          </button>
+        )}
       </header>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
