@@ -8,23 +8,23 @@ L'application suit une architecture modulaire basée sur le **Next.js App Router
 
 ```mermaid
 graph TD
-    User[Utilisateur] -->|Requête HTTP| CDN[Vercel Edge / CDN]
-    CDN -->|HTML Statique / JS| Client[Navigateur Client]
+    User[Utilisateur] -->|Requête HTTP| CDN["Vercel Edge / CDN"]
+    CDN -->|"HTML Statique / JS"| Client["Navigateur Client"]
     
     subgraph "Next.js Server"
-        Layout[Layout Server Component]
-        Meta[Metadonnées SEO]
+        Layout["Layout Server Component"]
+        Meta["Metadonnées SEO"]
     end
     
     subgraph "Client Side (Browser)"
-        Page[Page Component (CSR)]
+        Page["Page Component (CSR)"]
         SocketCtx[ChatSocketContext]
-        State[React State]
+        State["React State"]
     end
     
     subgraph "External Services"
-        API[API Backend (Node/Socket.io)]
-        SocketSrv[Socket Server]
+        API["API Backend (Node/Socket.io)"]
+        SocketSrv["Socket Server"]
     end
     
     Client --> Layout
