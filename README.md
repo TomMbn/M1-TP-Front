@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💬 Chat PWA - M1 TP Front
 
-## Getting Started
+L'application sera accessible sur [https://tom.mauboussin.angers.mds-project.fr/](https://tom.mauboussin.angers.mds-project.fr/).
 
-First, run the development server:
+## 🚀 Fonctionnalités
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **💬 Chat Temps Réel** : Communication instantanée via Websockets (Socket.io).
+- **🏠 Gestion de Salles** : Création et validation de salles de discussion uniques.
+- **👤 Profil Utilisateur** : Choix de pseudo et avatar (upload ou caméra).
+- **📱 PWA (Progressive Web App)** : Installable sur mobile/desktop, fonctionne hors-ligne.
+- **📍 Partage de Position** : Envoi de la géolocalisation actuelle.
+- **📸 Partage de Photos** : Prise de photo directe ou upload depuis la galerie.
+- **🔋 Indicateurs** : (Optionnel) Niveau de batterie affiché.
+- **🔔 Notifications** : Notifications push locales pour les nouveaux messages.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠 Stack Technique
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend Framework** : [Next.js 15](https://nextjs.org/) (App Router & Turbopack)
+- **Langage** : [TypeScript](https://www.typescriptlang.org/)
+- **Styling** : [Tailwind CSS v4](https://tailwindcss.com/)
+- **Temps Réel** : [Socket.io Client](https://socket.io/)
+- **Tests** : [Vitest](https://vitest.dev/) (Unitaire/Composant) & [Playwright](https://playwright.dev/) (E2E)
+- **Documentation UI** : [Storybook](https://storybook.js.org/)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Installation & Démarrage
 
-## Learn More
+1. **Cloner le projet**
+   ```bash
+   git clone <url-du-repo>
+   cd m1-tp-front
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Installer les dépendances**
+   ```bash
+   npm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🧪 Tests & Qualité
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ce projet met un point d'honneur à la qualité du code. Pour plus de détails, consultez le [Guide des Tests](./TESTING_GUIDE.md).
 
-## Deploy on Vercel
+| Commande | Action |
+|----------|--------|
+| `npm run test` | Lance les tests unitaires et composants (Vitest) |
+| `npx playwright test` | Lance les tests de bout en bout (E2E) |
+| `npm run storybook` | Lance la documentation des composants |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📚 Documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Des guides détaillés sont disponibles à la racine du projet :
+
+- [📘 STORYBOOK_GUIDE.md](./STORYBOOK_GUIDE.md) : Comment créer et documenter des composants.
+- [🧪 TESTING_GUIDE.md](./TESTING_GUIDE.md) : Stratégie de test complète.
+- [🎨 RENDERING_STRATEGIES.md](./RENDERING_STRATEGIES.md) : Choix d'architecture (SSR/CSR).
+
+## 👥 Auteur
+
+Tom Mauboussin - M1 DFS
