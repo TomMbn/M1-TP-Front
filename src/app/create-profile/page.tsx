@@ -130,20 +130,28 @@ export default function CreateProfilePage() {
           <label htmlFor="photo" className="block text-white/80 font-medium mb-1 ml-1">
             Photo (facultatif)
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             <input
               id="photo"
               type="file"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="w-full text-white/80 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30 cursor-pointer"
+              className="hidden"
             />
+
+            <label
+              htmlFor="photo"
+              className="flex-1 bg-white/20 hover:bg-white/30 text-white text-center py-3 rounded-xl border border-white/10 cursor-pointer transition flex items-center justify-center gap-2"
+            >
+              📂 Choisir un fichier
+            </label>
+
             <button
               type="button"
               onClick={openCamera}
-              className="bg-white/20 text-white px-4 py-2 rounded-xl hover:bg-white/30 border border-white/10 transition flex items-center gap-2"
+              className="flex-1 bg-white/20 text-white py-3 rounded-xl hover:bg-white/30 border border-white/10 transition flex items-center justify-center gap-2"
             >
-              📷 Photo
+              📷 Prendre Photo
             </button>
           </div>
           {showCamera && (
