@@ -26,6 +26,9 @@ export default function RoomPage() {
   const { id } = useParams();
   const router = useRouter();
   const [userCount, setUserCount] = useState<number>(0);
+  const [participants, setParticipants] = useState<string[]>([]);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -83,6 +86,8 @@ export default function RoomPage() {
         if (json.success && json.data && json.data[id as string]) {
           const clients = json.data[id as string].clients || {};
           setUserCount(Object.keys(clients).length);
+          const pseudos = Object.values(clients).map((c: any) => c.pseudo || "Anonyme").filter((v, i, a) => a.indexOf(v) === i);
+          setParticipants(pseudos as string[]);
         }
       } catch (e) {
         console.error("Failed to fetch room info", e);
@@ -434,7 +439,16 @@ export default function RoomPage() {
           </button>
           <div className="flex flex-col">
             <span>{formatRoomName(decodeURIComponent(id as string)).short}</span>
-            <span className="text-xs font-normal opacity-80">{userCount} connecté{userCount > 1 ? 's' : ''}</span>
+            <button
+              onClick={() => setShowParticipants(true)}
+              className="mt-1 flex items-center gap-2 bg-black/20 hover:bg-black/30 px-3 py-1 rounded-full text-xs font-medium transition-all border border-white/5 shadow-sm active:scale-95 group"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <span className="opacity-90 group-hover:opacity-100">{userCount} connecté{userCount > 1 ? 's' : ''}</span>
+            </button>
           </div>
         </div>
         {notifPermission !== "granted" && (
@@ -486,7 +500,12 @@ export default function RoomPage() {
                   <div className={`text-xs font-bold mb-1 ${msg.sender === "me" ? "text-pink-200" : "text-indigo-600"}`}>{msg.pseudo ?? (msg.sender === "me" ? "Moi" : "Inconnu")}</div>
                   <div className="leading-relaxed">{msg.text}</div>
                   {msg.attachment && (
-                    <ChatMessageImage src={msg.attachment} alt="attachment" className="mt-2 max-h-48 rounded-lg border border-white/20" />
+                    <ChatMessageImage
+                      src={msg.attachment}
+                      alt="attachment"
+                      className="mt-2 max-h-48 rounded-lg border border-white/20"
+                      onClick={() => setSelectedImage(msg.attachment!)}
+                    />
                   )}
                   <div className={`text-[10px] text-right mt-1 ${msg.sender === "me" ? "text-white/60" : "text-gray-400"}`}>{msg.timestamp}</div>
                 </div>
@@ -591,6 +610,55 @@ export default function RoomPage() {
           </div>
         )}
       </footer>
+      {showParticipants && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={() => setShowParticipants(false)}>
+          <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl w-full max-w-sm m-4 shadow-2xl border border-white/40 transform transition-all scale-100" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Participants ({participants.length})</h3>
+              <button
+                onClick={() => setShowParticipants(false)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-60 overflow-y-auto pr-2">
+              {participants.length > 0 ? (
+                <ul className="space-y-2">
+                  {participants.map((p, i) => (
+                    <li key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-indigo-50 transition-colors">
+                      <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                        {p.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="font-medium text-gray-700">{p}</span>
+                      {p === localPseudo && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-auto">Moi</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 text-center italic py-4">Aucun participant visible.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] animate-fade-in" onClick={() => setSelectedImage(null)}>
+          <div className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="fixed top-6 right-6 bg-black/50 hover:bg-black/70 text-white rounded-full w-10 h-10 flex items-center justify-center transition backdrop-blur-sm z-[110]"
+            >
+              ✕
+            </button>
+            <ChatMessageImage
+              src={selectedImage}
+              alt="Full preview"
+              className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain"
+            />
+          </div>
+        </div>
+      )}
       <Toast message="Photo prise avec succès !" show={showToast} onClose={() => setShowToast(false)} />
     </main>
   );

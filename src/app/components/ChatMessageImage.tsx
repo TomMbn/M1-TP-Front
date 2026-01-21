@@ -6,9 +6,10 @@ interface ChatMessageImageProps {
     src: string;
     alt: string;
     className?: string;
+    onClick?: () => void;
 }
 
-export default function ChatMessageImage({ src, alt, className }: ChatMessageImageProps) {
+export default function ChatMessageImage({ src, alt, className, onClick }: ChatMessageImageProps) {
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -73,7 +74,8 @@ export default function ChatMessageImage({ src, alt, className }: ChatMessageIma
         <img
             src={imageSrc || ""}
             alt={alt}
-            className={className}
+            className={`${className} ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+            onClick={onClick}
         />
     );
 }
