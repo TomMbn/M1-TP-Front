@@ -278,40 +278,13 @@ export default function RoomPage() {
 
     let content = input || "";
 
-    // If file exists, upload it first
+    // If file exists, use base64 directly
     if (file) {
-      try {
-        const socketId = (chat as any)?.socket?.id;
-        if (!socketId) {
-          alert("Impossible d'envoyer l'image : non connecté au serveur.");
-          return;
-        }
-
-        const res = await fetch(`${API_BASE_URL}/socketio/tchat/api/images/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: socketId,
-            image_data: file,
-          }),
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          // Construct the image URL message
-          const imageUrl = `${API_BASE_URL}/socketio/tchat/api/images/${socketId}`;
-          content = `[IMAGE] ${imageUrl}`;
-        } else {
-          console.error("Upload failed", data);
-          alert("Erreur lors de l'envoi de l'image.");
-          return;
-        }
-      } catch (e) {
-        console.error("Error uploading image", e);
-        alert("Erreur réseau lors de l'envoi de l'image.");
-        return;
+      if (typeof file === "string" && file.startsWith("data:image")) {
+        content = file;
+      } else {
+        // Should catch cases where file structure might be different, but here file is already string (dataURL)
+        console.warn("File is not a valid base64 image string");
       }
     }
 
