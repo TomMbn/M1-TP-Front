@@ -26,7 +26,7 @@ L'application sera accessible sur [https://tom.mauboussin.angers.mds-project.fr/
 
 1. **Cloner le projet**
    ```bash
-   git clone <url-du-repo>
+   git clone https://github.com/TomMbn/M1-TP-Front.git
    cd m1-tp-front
    ```
 
