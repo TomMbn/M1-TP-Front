@@ -69,7 +69,7 @@ if (stored) setAttachments(JSON.parse(stored));
 
 ### 4.2. Scores Lighthouse (Performance)
 
-![Placeholder: Capture d'écran du score Lighthouse - Mobile]
+![Score Lighthouse](./assets/lighthouse-report.png)
 
 - **LCP (Largest Contentful Paint)** :
   - *Impact* : Très bon grâce au Shell SSG (`layout.tsx`). L'utilisateur voit l'interface (header, fond) presque instantanément.

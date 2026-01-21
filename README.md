@@ -51,7 +51,8 @@ Des guides détaillés sont disponibles à la racine du projet :
 
 - [📘 STORYBOOK_GUIDE.md](./STORYBOOK_GUIDE.md) : Comment créer et documenter des composants.
 - [🧪 TESTING_GUIDE.md](./TESTING_GUIDE.md) : Stratégie de test complète.
-- [🎨 RENDERING_STRATEGIES.md](./RENDERING_STRATEGIES.md) : Choix d'architecture (SSR/CSR).
+- [�️ ARCHITECTURE.md](./ARCHITECTURE.md) : Architecture globale du projet.
+- [�🎨 RENDERING_STRATEGIES.md](./RENDERING_STRATEGIES.md) : Choix d'architecture (SSR/CSR).
 
 ## 👥 Auteur
 
