@@ -472,10 +472,10 @@ export default function RoomPage() {
         ) : (
           messages.map((msg) => (
             msg.categorie === "INFO" ? (
-              <div key={msg.id} className="w-full text-center text-xs font-medium text-white/60 my-2">{msg.text}</div>
+              <div key={msg.id} className="w-full text-center text-xs font-medium text-white/60 my-2 px-4 break-words">{msg.text}</div>
             ) : msg.categorie === "LOCATION" ? (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-md p-3 rounded-2xl shadow-sm ${msg.sender === "me"
+                <div className={`max-w-[75%] md:max-w-md p-3 rounded-2xl shadow-sm ${msg.sender === "me"
                   ? "bg-white/20 backdrop-blur-md text-white border border-white/20 rounded-br-none"
                   : "bg-white/90 backdrop-blur-md text-gray-800 rounded-bl-none"
                   }`}>
@@ -493,7 +493,7 @@ export default function RoomPage() {
               </div>
             ) : (
               <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-md p-3 rounded-2xl shadow-sm ${msg.sender === "me"
+                <div className={`max-w-[75%] md:max-w-md p-3 rounded-2xl shadow-sm break-words ${msg.sender === "me"
                   ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-br-none shadow-lg"
                   : "bg-white/90 backdrop-blur-md text-gray-900 rounded-bl-none shadow-md"
                   }`}>
@@ -594,22 +594,23 @@ export default function RoomPage() {
           </svg>
         </button>
 
-        {/* Modals outside flow but kept in component */}
-        {showCamera && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-            <div className="bg-gray-900 p-4 rounded-3xl flex flex-col items-center gap-4 border border-gray-800 shadow-2xl">
-              <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-500">
-                <video ref={videoRef} width={280} height={280} autoPlay className="object-cover" />
-                <canvas ref={canvasRef} width={280} height={280} style={{ display: "none" }} />
-              </div>
-              <div className="flex gap-4 w-full justify-center">
-                <button type="button" onClick={closeCamera} className="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2.5 rounded-xl font-medium transition">Annuler</button>
-                <button type="button" onClick={capturePhoto} className="bg-white text-indigo-600 hover:bg-indigo-50 px-5 py-2.5 rounded-xl font-bold transition">📸 Capturer</button>
-              </div>
+
+      </footer>
+      {/* Modals outside flow but kept in component */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-gray-900 p-4 rounded-3xl flex flex-col items-center gap-4 border border-gray-800 shadow-2xl">
+            <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-500">
+              <video ref={videoRef} width={280} height={280} autoPlay className="object-cover" />
+              <canvas ref={canvasRef} width={280} height={280} style={{ display: "none" }} />
+            </div>
+            <div className="flex gap-4 w-full justify-center">
+              <button type="button" onClick={closeCamera} className="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2.5 rounded-xl font-medium transition">Annuler</button>
+              <button type="button" onClick={capturePhoto} className="bg-white text-indigo-600 hover:bg-indigo-50 px-5 py-2.5 rounded-xl font-bold transition">📸 Capturer</button>
             </div>
           </div>
-        )}
-      </footer>
+        </div>
+      )}
       {showParticipants && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={() => setShowParticipants(false)}>
           <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl w-full max-w-sm m-4 shadow-2xl border border-white/40 transform transition-all scale-100" onClick={e => e.stopPropagation()}>
